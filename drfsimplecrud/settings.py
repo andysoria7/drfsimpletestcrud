@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os # Importamos este modulo para poder desplegar en render.com
+import dj_database_url # Para que funcione con postgreSQL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +22,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-_6v3xqk#gts8y1a75)x8--crxu!c%5&#-#0n0q49bu%e)xz3g4'
+SECRET_KEY = os.environ.get('SECRET_KEY', default='your secret key') # Nueva llave para desplegar en render.com
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = 'RENDER' not in os.environ # Lo dejamos en False cuando este en produccion por seguridad.
 
 ALLOWED_HOSTS = []
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME') # Nueva configuracion para render.com (if tambien)
+
+if RENDER_EXTERNAL_HOSTNAME:   
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -44,6 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Nuevo modulo de whiteNoise para archivos estaticos.
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,11 +84,13 @@ WSGI_APPLICATION = 'drfsimplecrud.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# Nuestra conexion a PostgreSQL
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config( # En produccion va a leer esta variable de postgreSQL
+        default='sqlite:///db.sqlite3', # Cuando estemos en desarrollo vamos a utilizar sqlite3        
+        conn_max_age=600
+    ) 
+        
 }
 
 
@@ -119,6 +129,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+
+if not DEBUG: # Si no estoy en desarrollo, vas a añadir esta variable STATIC ROOT que creara una carpeta con archivos staticos.
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
